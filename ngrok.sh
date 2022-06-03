@@ -1,6 +1,10 @@
 #!/bin/bash
 
-# 控制台字体
+RED="\033[31m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+PLAIN="\033[0m"
+
 red(){
 	echo -e "\033[31m\033[01m$1\033[0m"
 }
@@ -66,7 +70,7 @@ back2menu(){
 }
 
 getNgrokAddress(){
-	if [ $httptcp == "tcp" ]; then
+	if [[ $httptcp == "tcp" ]]; then
 		tcpNgrok=$(curl --silent --show-error http://127.0.0.1:4040/api/tunnels | sed -nE 's/.*public_url":"tcp:..([^"]*).*/\1/p')
 		if [[ -n $tcpNgrok ]]; then
 			green "隧道启动成功！当前TCP隧道地址为：$tcpNgrok"
@@ -75,7 +79,7 @@ getNgrokAddress(){
 			screen -USdm screen4ngrok ngrok $httptcp $tunnelPort -region $ngrok_region
 		fi
 	fi
-	if [ $httptcp == "http" ]; then
+	if [[ $httptcp == "http" ]]; then
 		httpNgrok=$(curl --silent --show-error http://127.0.0.1:4040/api/tunnels | sed -nE 's/.*public_url":"http:..([^"]*).*/\1/p')
 		httpsNgrok=$(curl --silent --show-error http://127.0.0.1:4040/api/tunnels | sed -nE 's/.*public_url":"https..([^"]*).*/\1/p')
 		if [[ -n $httpNgrok && -n $httpsNgrok ]]; then
@@ -89,8 +93,8 @@ getNgrokAddress(){
 	fi
 }
 
-download_ngrok(){
-	[ $ngrokStatus == "已安装" ] && red "检测到已安装Ngrok程序包，无需重复安装！！" && exit 1
+install_ngrok(){
+	[[ $ngrokStatus == "已安装" ]] && red "检测到已安装Ngrok程序包，无需重复安装！！" && exit 1
 	wget -N https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-$cpuArch.tgz
 	tar -xzvf ngrok-stable-linux-$cpuArch.tgz -C /usr/local/bin
 	green "Ngrok 程序包已安装成功"
@@ -98,10 +102,9 @@ download_ngrok(){
 }
 
 ngrok_authtoken(){
-	[ $ngrokStatus == "未安装" ] && red "检测到未安装Ngrok程序包，无法执行操作！！" && back2menu
-	[ $authStatus == "已授权" ] && red "已授权Ngrok程序包，无需重复授权！！！" && back2menu
+	[[ $ngrokStatus == "未安装" ]] && red "检测到未安装Ngrok程序包，无法执行操作！！" && back2menu
 	read -p "请输入Ngrok官方网站的Authtoken（可从 https://dashboard.ngrok.com/get-started/your-authtoken 内获取）：" authtoken
-	[ -z $authtoken ] && red "无输入Authtoken，授权过程中断！" && back2menu
+	[[ -z $authtoken ]] && red "无输入Authtoken，授权过程中断！" && back2menu
 	ngrok authtoken $authtoken
 	green "Ngrok Authtoken授权成功"
 	back2menu
@@ -128,14 +131,14 @@ select_region(){
 }
 
 runTunnel(){
-	[ $ngrokStatus == "未安装" ] && red "检测到未安装Ngrok程序包，无法执行操作！！" && back2menu
-	[ $authStatus == "未授权" ] && red "未授权Ngrok程序包，无法执行操作！！！" && back2menu
+	[[ $ngrokStatus == "未安装" ]] && red "检测到未安装Ngrok程序包，无法执行操作！！" && back2menu
+	[[ $authStatus == "未授权" ]] && red "未授权Ngrok程序包，无法执行操作！！！" && back2menu
 	[[ -z $(screen -help 2>/dev/null) ]] && ${PACKAGE_UPDATE[int]} && ${PACKAGE_INSTALL[int]} screen
 	select_region
 	read -p "请输入你所使用的协议（默认HTTP）：" httptcp
-	[ -z $httptcp ] && httptcp="http"
+	[[ -z $httptcp ]] && httptcp="http"
 	read -p "请输入反代端口（默认80）：" tunnelPort
-	[ -z $tunnelPort ] && tunnelPort=80
+	[[ -z $tunnelPort ]] && tunnelPort=80
 	screen -USdm screen4ngrok ngrok $httptcp $tunnelPort -region $ngrok_region
 	yellow "等待5秒，获取Ngrok的外网地址"
 	sleep 5
@@ -144,54 +147,51 @@ runTunnel(){
 }
 
 killTunnel(){
-	[ $ngrokStatus == "未安装" ] && red "检测到未安装Ngrok程序包，无法执行操作！！" && back2menu
-	[ $authStatus == "未授权" ] && red "未授权Ngrok程序包，无法执行操作！！！" && back2menu
+	[[ $ngrokStatus == "未安装" ]] && red "检测到未安装Ngrok程序包，无法执行操作！！" && back2menu
+	[[ $authStatus == "未授权" ]] && red "未授权Ngrok程序包，无法执行操作！！！" && back2menu
 	[[ -z $(screen -help 2>/dev/null) ]] && ${PACKAGE_UPDATE[int]} && ${PACKAGE_INSTALL[int]} screen
 	screen -S screen4ngrok -X quit
 	green "隧道停止成功！"
 }
 
 uninstall(){
-	[ $ngrokStatus == "未安装" ] && red "检测到未安装Ngrok程序包，无法执行操作！！" && back2menu
+	[[ $ngrokStatus == "未安装" ]] && red "检测到未安装Ngrok程序包，无法执行操作！！" && back2menu
 	rm -f /usr/local/bin/ngrok
 	green "Ngrok 程序包已卸载成功"
 	back2menu
 }
 
 menu(){
-	clear
 	checkStatus
-	red "=================================="
-	echo "                           "
-	red "      Ngrok 内网穿透一键脚本       "
-	red "          by 小御坂的破站           "
-	echo "                           "
-	red "  Site: https://owo.misaka.rest  "
-	echo "                           "
-	red "=================================="
-	echo "                           "
-	yellow "今日运行次数：$TODAY   总共运行次数：$TOTAL"
-	echo "            "
-	green "Ngrok 客户端状态：$ngrokStatus"
-	green "账户授权状态：$authStatus"
-	echo "            "
-	green "1. 下载Ngrok程序包"
-	green "2. 授权Ngrok账号"
-	green "3. 启用隧道"
-	green "4. 停用隧道"
-	green "5. 卸载Ngrok程序包"
-	green "6. 更新脚本"
-	green "0. 退出"
-	echo "         "
-	read -p "请输入数字:" NumberInput
-	case "$NumberInput" in
-		1) download_ngrok ;;
-		2) ngrok_authtoken ;;
-		3) runTunnel ;;
-		4) killTunnel ;;
-		5) uninstall ;;
-		6) wget -N https://gitlab.com/misakano7545/Ngrok-1key/-/raw/master/ngrok.sh && bash ngrok.sh ;;
-		*) exit 1 ;;
+	clear
+	echo "#############################################################"
+	echo -e "#                ${RED}Ngrok 内网转发 一键配置脚本${PLAIN}                 #"
+	echo -e "# ${GREEN}作者${PLAIN}: Misaka No                                           #"
+	echo -e "# ${GREEN}网址${PLAIN}: https://owo.misaka.rest                             #"
+	echo -e "# ${GREEN}论坛${PLAIN}: https://vpsgo.co                                    #"
+	echo -e "# ${GREEN}TG群${PLAIN}: https://t.me/misakanetcn                            #"
+	echo "#############################################################"
+	echo ""
+	echo -e " ${GREEN}1.${PLAIN} 安装 Ngrok"
+	echo -e " ${GREEN}2.${PLAIN} 授权 Ngrok Authtoken"
+	echo -e " ${GREEN}3.${PLAIN} ${RED}卸载 Ngrok${PLAIN}"
+	echo " -------------"
+	echo -e " ${GREEN}4.${PLAIN} 启动隧道"
+	echo -e " ${GREEN}5.${PLAIN} 停止隧道"
+	echo " -------------"
+	echo -e " ${GREEN}0.${PLAIN} 退出脚本"
+	echo ""
+	echo -e "Ngrok 客户端状态：$ngrokStatus   账户授权状态：$authStatus"
+	echo -e "今日运行次数：$TODAY   总共运行次数：$TOTAL"
+	echo ""
+	read -rp "请输入选项 [0-5]:" menuChoice
+	case $menuChoice in
+		1 ) install_ngrok ;;
+		2 ) ngrok_authtoken ;;
+		3 ) uninstall ;;
+		4 ) runTunnel ;;
+		5 ) killTunnel ;;
+		* ) exit 1;;
 	esac
 }
 
